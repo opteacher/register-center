@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package discovery.service.v1;
+
+option go_package = "api";
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+service Discovery {
+    rpc Register(RegSvcReqs) returns (.google.protobuf.Empty);
+    rpc Services(.google.protobuf.Empty) returns (LstSvcResp);
+    rpc Service(IdenSvcReqs) returns (GetSvcResp);
+    rpc Cancel(IdenSvcReqs) returns (.google.protobuf.Empty);
+}
+
+message RegSvcReqs {
+    string appID = 1;
+    repeated string urls = 2;
+}
+
+message LstSvcResp {
+    repeated string appIDs = 1;
+}
+
+message GetSvcResp {
+    repeated string addrs = 1;
+}
+
+message IdenSvcReqs {
+    string appID = 1;
+}

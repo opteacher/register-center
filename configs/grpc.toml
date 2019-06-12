@@ -1,0 +1,8 @@
+
+[server]
+    addr = "0.0.0.0:9000"
+    timeout = "1s"
+
+[discovery]
+    nodes = "discovery:7171"
+    timeout = "5s"
