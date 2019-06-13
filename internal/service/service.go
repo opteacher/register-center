@@ -16,6 +16,8 @@ import (
 	xtime "github.com/bilibili/kratos/pkg/time"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"github.com/bilibili/kratos/pkg/log"
+	"encoding/json"
 )
 
 type MicoService struct {
@@ -48,7 +50,8 @@ type DiscoveryConfig struct {
 	Timeout xtime.Duration
 }
 
-func (s *Service) Register(ctx context.Context, req *pb.RegSvcReqs) (*empty.Empty, error) {
+func (s *Service) Register(ctx context.Context, req *pb.RegSvcReqs) (*pb.RegSvcResp, error) {
+	// 将服务注册进Discovery中
 	var dc struct {
 		Discovery *DiscoveryConfig
 	}
@@ -75,11 +78,17 @@ func (s *Service) Register(ctx context.Context, req *pb.RegSvcReqs) (*empty.Empt
 	if cancel, err := dis.Register(ctx, ins); err != nil {
 		return nil, err
 	} else {
+		log.Info("Service %s has registered into discovery", req.AppID)
 		s.sm[req.AppID] = MicoService{
 			cancel,
 		}
 	}
-	return &empty.Empty{}, nil
+	// 将服务注册进Kong中
+	if svcID, err := s.kong.NewService(req.AppID, req.Urls); err != nil {
+		return nil, err
+	} else {
+		return &pb.RegSvcResp{ KongID: svcID }, nil
+	}
 }
 
 func (s *Service) Services(context.Context, *empty.Empty) (resp *pb.LstSvcResp, err error) {
@@ -162,6 +171,34 @@ func (s *Service) Cancel(ctx context.Context, req *pb.IdenSvcReqs) (*empty.Empty
 	return &empty.Empty{}, nil
 }
 
+func (s *Service) AddRoutes(ctx context.Context, req *pb.AddRoutesReqs) (resp *pb.AddRoutesResp, err error) {
+	paths := make(map[string]interface{})
+	if err := json.Unmarshal(req.Paths, &paths); err != nil {
+		return nil, err
+	}
+	resp = &pb.AddRoutesResp{}
+	for path, body := range paths {
+		for method, inbody := range body.(map[string]interface{}) {
+			// NOTE: 默认用summary的最后一截作为路由的名字，所以不能包含特殊字符
+			summary := inbody.(map[string]interface{})["summary"].(string)
+			nameArray := strings.Split(summary, "/")
+			resp.Routes = append(resp.Routes, &pb.RouteResp{
+				Name: nameArray[len(nameArray) - 1],
+				Path: path,
+				Method: method,
+			})
+		}
+	}
+	for i, route := range resp.Routes {
+		if rid, err := s.kong.AddRoute(route.Name, route.Method, route.Path); err != nil {
+			return nil, err
+		} else {
+			resp.Routes[i].Id = rid
+		}
+	}
+	return
+}
+
 // Ping ping the resource.
 func (s *Service) Ping(ctx context.Context) (err error) {
 	return s.kong.Ping(ctx)
@@ -169,5 +206,8 @@ func (s *Service) Ping(ctx context.Context) (err error) {
 
 // Close close the resource.
 func (s *Service) Close() {
-
+	for appID, svc := range s.sm {
+		svc.Cancel()
+		log.Info("Service %s canceled from discovery", appID)
+	}
 }

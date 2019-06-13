@@ -8,15 +8,24 @@ import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 
 service Discovery {
-    rpc Register(RegSvcReqs) returns (.google.protobuf.Empty);
+    rpc Register(RegSvcReqs) returns (RegSvcResp);
     rpc Services(.google.protobuf.Empty) returns (LstSvcResp);
     rpc Service(IdenSvcReqs) returns (GetSvcResp);
     rpc Cancel(IdenSvcReqs) returns (.google.protobuf.Empty);
+    rpc AddRoutes(AddRoutesReqs) returns (AddRoutesResp) {
+        option (google.api.http) = {
+            post: "/discovery/service/v1/add-routes"
+        };
+    }
 }
 
 message RegSvcReqs {
     string appID = 1;
     repeated string urls = 2;
+}
+
+message RegSvcResp {
+    string kongID = 1;
 }
 
 message LstSvcResp {
@@ -29,4 +38,20 @@ message GetSvcResp {
 
 message IdenSvcReqs {
     string appID = 1;
+}
+
+message AddRoutesReqs {
+    string serviceID = 1;
+    bytes paths = 2; // 对应由Protoc生成的swagger.json文件的paths字段
+}
+
+message RouteResp {
+    string id = 1;
+    string name = 2;
+    string path = 3;
+    string method = 4;
+}
+
+message AddRoutesResp {
+    repeated RouteResp routes = 1;
 }

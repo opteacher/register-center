@@ -22,13 +22,26 @@ var _ *bm.Context
 var _ context.Context
 var _ binding.StructValidator
 
+var PathDiscoveryAddRoutes = "/discovery/service/v1/add-routes"
+
 // DiscoveryBMServer is the server API for Discovery service.
 type DiscoveryBMServer interface {
+	AddRoutes(ctx context.Context, req *AddRoutesReqs) (resp *AddRoutesResp, err error)
 }
 
 var DiscoverySvc DiscoveryBMServer
 
+func discoveryAddRoutes(c *bm.Context) {
+	p := new(AddRoutesReqs)
+	if err := c.BindWith(p, binding.Default(c.Request.Method, c.Request.Header.Get("Content-Type"))); err != nil {
+		return
+	}
+	resp, err := DiscoverySvc.AddRoutes(c, p)
+	c.JSON(resp, err)
+}
+
 // RegisterDiscoveryBMServer Register the blademaster route
 func RegisterDiscoveryBMServer(e *bm.Engine, server DiscoveryBMServer) {
 	DiscoverySvc = server
+	e.POST("/discovery/service/v1/add-routes", discoveryAddRoutes)
 }
