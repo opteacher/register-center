@@ -78,3 +78,13 @@ services:
     depends_on:
       - discovery
       - konga
+
+  test:
+    container_name: test
+    build:
+      context: test/
+    ports:
+      - "9747:9747"
+      - "8747:8747"
+    depends_on:
+      - register-center
