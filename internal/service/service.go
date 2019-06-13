@@ -120,15 +120,25 @@ func (csm *consumer) getInstances(ctx context.Context, ch <-chan struct{}) {
 	}
 }
 
-func (csm *consumer) getInstance() *naming.Instance {
+func (csm *consumer) getInstance(ctx context.Context) *naming.Instance {
 	logTime := time.Now()
 	dur := time.Duration(csm.timeout)
-	for len(csm.ins) == 0 {
-		if time.Since(logTime) > dur {
-			return nil
+	for time.Since(logTime) <= dur {
+		if ins, ok := csm.dis.Fetch(ctx); !ok {
+			continue
+		} else if in, ok := ins.Instances[csm.conf.Zone]; ok {
+			csm.ins = in
 		} else {
-			time.Sleep(2 * time.Second)
+			for _, in := range ins.Instances {
+				csm.ins = append(csm.ins, in...)
+			}
 		}
+		if len(csm.ins) > 0 {
+			break
+		}
+	}
+	if len(csm.ins) == 0 {
+		return nil
 	}
 	// NOTE: 此处运用一种负载均衡算法得出一个实例用于处理
 	rand.Seed(time.Now().Unix())
@@ -156,9 +166,7 @@ func (s *Service) Service(ctx context.Context, req *pb.IdenSvcReqs) (*pb.GetSvcR
 		dis.Build(req.AppID),
 		nil,
 	}
-	ch := csm.dis.Watch()
-	go csm.getInstances(ctx, ch)
-	ins := csm.getInstance()
+	ins := csm.getInstance(ctx)
 	return &pb.GetSvcResp{Addrs: ins.Addrs}, nil
 }
 

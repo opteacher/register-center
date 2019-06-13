@@ -6,11 +6,14 @@ networks:
 services:
   kong-database:
     container_name: kong-database
-    image: cassandra:3
+    image: postgres:9.5
+    environment:
+      - POSTGRES_USER=kong
+      - POSTGRES_DB=kong
     networks:
       - kong-net
     ports:
-      - "9042:9042"
+      - "5432:5432"
 
   kong-migrations:
     image: kong:latest
@@ -18,7 +21,7 @@ services:
     networks:
       - kong-net
     environment:
-      KONG_DATABASE: "cassandra"
+      KONG_DATABASE: "postgres"
       KONG_PG_HOST: "kong-database"
       KONG_CASSANDRA_CONTACT_POINTS: "kong-database"
     depends_on:
@@ -33,7 +36,7 @@ services:
     networks:
       - kong-net
     environment:
-      KONG_DATABASE: "cassandra"
+      KONG_DATABASE: "postgres"
       KONG_PG_HOST: "kong-database"
       KONG_CASSANDRA_CONTACT_POINTS: "kong-database"
       KONG_PROXY_ACCESS_LOG: "/dev/stdout"
