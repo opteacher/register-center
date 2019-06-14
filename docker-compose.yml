@@ -1,68 +1,6 @@
 version: '3'
 
-networks:
-  kong-net:
-
 services:
-  kong-database:
-    container_name: kong-database
-    image: cassandra:3
-    networks:
-      - kong-net
-    ports:
-      - "9042:9042"
-
-  kong-migrations:
-    image: kong:latest
-    command: kong migrations bootstrap
-    networks:
-      - kong-net
-    environment:
-      KONG_DATABASE: "cassandra"
-      KONG_PG_HOST: "kong-database"
-      KONG_CASSANDRA_CONTACT_POINTS: "kong-database"
-    depends_on:
-      - kong-database
-    links:
-      - kong-database
-    restart: on-failure
-
-  kong:
-    image: kong:latest
-    container_name: kong
-    networks:
-      - kong-net
-    environment:
-      KONG_DATABASE: "cassandra"
-      KONG_PG_HOST: "kong-database"
-      KONG_CASSANDRA_CONTACT_POINTS: "kong-database"
-      KONG_PROXY_ACCESS_LOG: "/dev/stdout"
-      KONG_ADMIN_ACCESS_LOG: "/dev/stdout"
-      KONG_PROXY_ERROR_LOG: "/dev/stderr"
-      KONG_ADMIN_ERROR_LOG: "/dev/stderr"
-      KONG_ADMIN_LISTEN: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
-    ports:
-      - "8000:8000"
-      - "8443:8443"
-      - "8001:8001"
-      - "8444:8444"
-    depends_on:
-      - kong-database
-    restart: on-failure
-
-  konga:
-    image: pantsel/konga
-    container_name: konga
-    networks:
-      - kong-net
-    environment:
-      NODE_ENV: "production"
-      TOKEN_SECRET: RYgSgW1I6rRScsSBJswX/zZ3oYlRYptss3/ernpi2gTDPjvO0Zaep6v5Fv0ctfRCL0yOdbCUojvt3X7PwTrKqg==
-    ports:
-      - "1337:1337"
-    depends_on:
-      - kong
-
   discovery:
     container_name: discovery
     build:
@@ -75,16 +13,21 @@ services:
     ports:
       - "8089:8000"
       - "9093:9000"
+    environment:
+      DISCOVERY_ADDR: "discovery:7171"
+      KONG_ADMIN_ADDR: "http://127.0.0.1:8001"
     depends_on:
       - discovery
-      - konga
 
-  test:
-    container_name: test
-    build:
-      context: test/
-    ports:
-      - "9747:9747"
-      - "8747:8747"
-    depends_on:
-      - register-center
+#  test:
+#    container_name: test
+#    build:
+#      context: test/
+#    ports:
+#      - "9747:9747"
+#      - "8747:8747"
+#    environment:
+#      DISCOVERY_ADDR: "discovery:7171"
+#      REGISTER_CENTER: "register-center:8089"
+#    depends_on:
+#      - register-center

@@ -12,11 +12,8 @@ service Discovery {
     rpc Services(.google.protobuf.Empty) returns (LstSvcResp);
     rpc Service(IdenSvcReqs) returns (GetSvcResp);
     rpc Cancel(IdenSvcReqs) returns (.google.protobuf.Empty);
-    rpc AddRoutes(AddRoutesReqs) returns (AddRoutesResp) {
-        option (google.api.http) = {
-            post: "/discovery/service/v1/add-routes"
-        };
-    }
+    rpc AddRoutes(AddRoutesReqs) returns (AddRoutesResp);
+    rpc AddRoute(Route) returns (Route);
 }
 
 message RegSvcReqs {
@@ -45,7 +42,7 @@ message AddRoutesReqs {
     bytes paths = 2; // 对应由Protoc生成的swagger.json文件的paths字段
 }
 
-message RouteResp {
+message Route {
     string id = 1;
     string name = 2;
     string path = 3;
@@ -53,5 +50,5 @@ message RouteResp {
 }
 
 message AddRoutesResp {
-    repeated RouteResp routes = 1;
+    repeated Route routes = 1;
 }

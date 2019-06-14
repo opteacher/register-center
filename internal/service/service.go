@@ -9,15 +9,16 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+
 	"github.com/bilibili/kratos/pkg/conf/env"
 	"github.com/bilibili/kratos/pkg/conf/paladin"
+	"github.com/bilibili/kratos/pkg/log"
 	"github.com/bilibili/kratos/pkg/naming"
 	"github.com/bilibili/kratos/pkg/naming/discovery"
 	xtime "github.com/bilibili/kratos/pkg/time"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"github.com/bilibili/kratos/pkg/log"
-	"encoding/json"
 )
 
 type MicoService struct {
@@ -26,9 +27,9 @@ type MicoService struct {
 
 // Service service.
 type Service struct {
-	ac  *paladin.Map
+	ac   *paladin.Map
 	kong *dao.Kong
-	sm  map[string]MicoService
+	sm   map[string]MicoService
 }
 
 // New new a service and return.
@@ -38,9 +39,9 @@ func New() (s *Service) {
 		panic(err)
 	}
 	s = &Service{
-		ac:  ac,
+		ac:   ac,
 		kong: dao.NewKong(),
-		sm:  make(map[string]MicoService),
+		sm:   make(map[string]MicoService),
 	}
 	return s
 }
@@ -55,8 +56,15 @@ func (s *Service) Register(ctx context.Context, req *pb.RegSvcReqs) (*pb.RegSvcR
 	var dc struct {
 		Discovery *DiscoveryConfig
 	}
-	if err := paladin.Get("grpc.toml").UnmarshalTOML(&dc); err != nil {
-		dc.Discovery.Nodes = "127.0.0.1:7171"
+	// 如果环境变量中有指定discovery的地址，则首先用环境变量中的
+	if dsAddr := os.Getenv("DISCOVERY_ADDR"); len(dsAddr) != 0 {
+		dc.Discovery = &DiscoveryConfig{
+			Nodes: dsAddr,
+		}
+	} else if err := paladin.Get("grpc.toml").UnmarshalTOML(&dc); err != nil {
+		dc.Discovery = &DiscoveryConfig{
+			Nodes: "127.0.0.1:7171",
+		}
 	}
 	hn, _ := os.Hostname()
 	dis := discovery.New(&discovery.Config{
@@ -87,7 +95,7 @@ func (s *Service) Register(ctx context.Context, req *pb.RegSvcReqs) (*pb.RegSvcR
 	if svcID, err := s.kong.NewService(req.AppID, req.Urls); err != nil {
 		return nil, err
 	} else {
-		return &pb.RegSvcResp{ KongID: svcID }, nil
+		return &pb.RegSvcResp{KongID: svcID}, nil
 	}
 }
 
@@ -190,9 +198,9 @@ func (s *Service) AddRoutes(ctx context.Context, req *pb.AddRoutesReqs) (resp *p
 			// NOTE: 默认用summary的最后一截作为路由的名字，所以不能包含特殊字符
 			summary := inbody.(map[string]interface{})["summary"].(string)
 			nameArray := strings.Split(summary, "/")
-			resp.Routes = append(resp.Routes, &pb.RouteResp{
-				Name: nameArray[len(nameArray) - 1],
-				Path: path,
+			resp.Routes = append(resp.Routes, &pb.Route{
+				Name:   nameArray[len(nameArray)-1],
+				Path:   path,
 				Method: method,
 			})
 		}
@@ -205,6 +213,19 @@ func (s *Service) AddRoutes(ctx context.Context, req *pb.AddRoutesReqs) (resp *p
 		}
 	}
 	return
+}
+
+func (s *Service) AddRoute(ctx context.Context, req *pb.Route) (*pb.Route, error) {
+	if rid, err := s.kong.AddRoute(req.Name, req.Method, req.Path); err != nil {
+		return nil, err
+	} else {
+		return &pb.Route{
+			Id: rid,
+			Name: req.Name,
+			Method: req.Method,
+			Path: req.Path,
+		}, nil
+	}
 }
 
 // Ping ping the resource.

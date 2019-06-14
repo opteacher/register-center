@@ -6,15 +6,17 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"path"
 	"register-center/internal/utils"
 	"strings"
 	"time"
 
+	"encoding/json"
+	"io/ioutil"
+
 	"github.com/bilibili/kratos/pkg/conf/paladin"
 	"github.com/bilibili/kratos/pkg/log"
-	"io/ioutil"
-	"encoding/json"
 )
 
 type Kong struct {
@@ -27,7 +29,9 @@ func NewKong() *Kong {
 			AdminAddrs string
 		}
 	}
-	if err := paladin.Get("kong.toml").UnmarshalTOML(&kc); err != nil {
+	if adminAddrs := os.Getenv("KONG_ADMIN_ADDR"); len(adminAddrs) != 0 {
+		kc.Base.AdminAddrs = adminAddrs
+	} else if err := paladin.Get("kong.toml").UnmarshalTOML(&kc); err != nil {
 		panic(err)
 	}
 	return &Kong{

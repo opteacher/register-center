@@ -1,5 +1,6 @@
 FROM golang
 
+ENV GOPROXY http://127.0.0.1:63617
 ENV GO111MODULE on
 
 WORKDIR /go/release

@@ -3,19 +3,18 @@ package grpc
 import (
 	"register-center/internal/service"
 
-	"github.com/bilibili/kratos/pkg/conf/paladin"
-	"github.com/bilibili/kratos/pkg/net/rpc/warden"
-	"register-center/internal/utils"
 	"context"
 	pb "register-center/api"
-	"path"
+
+	"github.com/bilibili/kratos/pkg/conf/paladin"
+	"github.com/bilibili/kratos/pkg/net/rpc/warden"
 )
 
 // New new a grpc server.
 func New(svc *service.Service) *warden.Server {
 	var rc struct {
-		Server *warden.ServerConfig
-		Discovery *struct{
+		Server    *warden.ServerConfig
+		Discovery *struct {
 			Apipath string
 		}
 	}
@@ -37,16 +36,9 @@ func registerService(ws *warden.Server, svc *service.Service, addr string, apipa
 	pb.RegisterDiscoveryServer(ws.Server(), svc)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	if resp, err := svc.Register(ctx, &pb.RegSvcReqs{
+	if _, err := svc.Register(ctx, &pb.RegSvcReqs{
 		AppID: "discovery.service",
-		Urls:  []string{ addr },
-	}); err != nil {
-		panic(err)
-	} else if bdata, err := utils.PickPathsFromSwaggerJSON(path.Join(apipath, "discovery.swagger.json")); err != nil {
-		panic(err)
-	} else if _, err := svc.AddRoutes(ctx, &pb.AddRoutesReqs{
-		ServiceID: resp.KongID,
-		Paths: bdata,
+		Urls:  []string{addr},
 	}); err != nil {
 		panic(err)
 	}
