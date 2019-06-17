@@ -8,6 +8,7 @@ import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 
 service Discovery {
+    // 注册时给出的URL应该是能够通过外网访问的
     rpc Register(RegSvcReqs) returns (RegSvcResp);
     rpc Services(.google.protobuf.Empty) returns (LstSvcResp);
     rpc Service(IdenSvcReqs) returns (GetSvcResp);

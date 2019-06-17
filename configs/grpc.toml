@@ -6,4 +6,3 @@
 [discovery]
     nodes = "127.0.0.1:7171"
     timeout = "5s"
-    apipath = "/Users/zhaojiachen/Projects/register-center/api"

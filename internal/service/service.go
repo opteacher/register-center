@@ -206,7 +206,7 @@ func (s *Service) AddRoutes(ctx context.Context, req *pb.AddRoutesReqs) (resp *p
 		}
 	}
 	for i, route := range resp.Routes {
-		if rid, err := s.kong.AddRoute(route.Name, route.Method, route.Path); err != nil {
+		if rid, err := s.kong.AddRoute(req.ServiceID, route.Name, route.Method, route.Path); err != nil {
 			return nil, err
 		} else {
 			resp.Routes[i].Id = rid
@@ -215,15 +215,15 @@ func (s *Service) AddRoutes(ctx context.Context, req *pb.AddRoutesReqs) (resp *p
 	return
 }
 
-func (s *Service) AddRoute(ctx context.Context, req *pb.Route) (*pb.Route, error) {
-	if rid, err := s.kong.AddRoute(req.Name, req.Method, req.Path); err != nil {
+func (s *Service) AddRoute(ctx context.Context, req *pb.AddRouteReqs) (*pb.Route, error) {
+	if rid, err := s.kong.AddRoute(req.ServiceID, req.Route.Name, req.Route.Method, req.Route.Path); err != nil {
 		return nil, err
 	} else {
 		return &pb.Route{
-			Id: rid,
-			Name: req.Name,
-			Method: req.Method,
-			Path: req.Path,
+			Id:     rid,
+			Name:   req.Route.Name,
+			Method: req.Route.Method,
+			Path:   req.Route.Path,
 		}, nil
 	}
 }

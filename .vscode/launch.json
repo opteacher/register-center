@@ -5,6 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "demo-test",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/test/demo/cmd/main.go",
+            "args": [
+                "-conf", "${workspaceFolder}/test/demo/configs/"
+            ]
+        },
+        {
             "name": "register-center",
             "type": "go",
             "request": "launch",

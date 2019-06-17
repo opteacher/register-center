@@ -93,9 +93,9 @@ func (k *Kong) NewService(name string, urls []string) (string, error) {
 	}
 }
 
-func (k *Kong) AddRoute(name string, method string, path string) (string, error) {
+func (k *Kong) AddRoute(svc string, name string, method string, path string) (string, error) {
 	data := []byte(fmt.Sprintf("{\"name\":\"%s\", \"methods\":[\"%s\"], \"paths\":[\"%s\"]}", name, strings.ToUpper(method), path))
-	if resp, err := http.Post(k.GetAdminAddr("/routes"), utils.APPLICATION_JSON, bytes.NewReader(data)); err != nil {
+	if resp, err := http.Post(k.GetAdminAddr(fmt.Sprintf("/services/%s/routes", svc)), utils.APPLICATION_JSON, bytes.NewReader(data)); err != nil {
 		return "", err
 	} else if byteResp, err := ioutil.ReadAll(resp.Body); err != nil {
 		return "", err

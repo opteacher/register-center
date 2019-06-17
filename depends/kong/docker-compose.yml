@@ -1,8 +1,5 @@
 version: '3'
 
-networks:
-  kong-net:
-
 services:
   kong-database:
     container_name: kong-database
@@ -10,16 +7,12 @@ services:
     environment:
       - POSTGRES_USER=kong
       - POSTGRES_DB=kong
-    networks:
-      - kong-net
     ports:
       - "5432:5432"
 
   kong-migrations:
     image: kong:latest
     command: kong migrations bootstrap
-    networks:
-      - kong-net
     environment:
       KONG_DATABASE: "postgres"
       KONG_PG_HOST: "kong-database"
@@ -33,8 +26,6 @@ services:
   kong:
     image: kong:latest
     container_name: kong
-    networks:
-      - kong-net
     environment:
       KONG_DATABASE: "postgres"
       KONG_PG_HOST: "kong-database"
@@ -56,8 +47,6 @@ services:
   konga:
     image: pantsel/konga
     container_name: konga
-    networks:
-      - kong-net
     environment:
       NODE_ENV: "production"
       TOKEN_SECRET: RYgSgW1I6rRScsSBJswX/zZ3oYlRYptss3/ernpi2gTDPjvO0Zaep6v5Fv0ctfRCL0yOdbCUojvt3X7PwTrKqg==
