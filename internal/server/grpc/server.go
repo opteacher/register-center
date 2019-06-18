@@ -26,7 +26,7 @@ func New(svc *service.Service) *warden.Server {
 	ws := warden.NewServer(rc.Server)
 	pb.RegisterRegisterServer(ws.Server(), svc)
 	if _, err := svc.RegAsGRPC(context.Background(), &pb.RegSvcReqs{
-		AppID: "discovery.service",
+		AppID: "register.service",
 		Urls:  []string{"127.0.0.1:9093"}, // 这里给出的url很关键，必须是从外部可以访问的
 	}); err != nil {
 		panic(err)
