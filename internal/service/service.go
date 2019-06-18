@@ -2,12 +2,10 @@ package service
 
 import (
 	"context"
-	"math/rand"
 	"os"
 	pb "register-center/api"
 	"register-center/internal/dao"
 	"strings"
-	"time"
 
 	"encoding/json"
 
@@ -51,7 +49,7 @@ type DiscoveryConfig struct {
 	Timeout xtime.Duration
 }
 
-func (s *Service) Register(ctx context.Context, req *pb.RegSvcReqs) (*pb.RegSvcResp, error) {
+func (s *Service) RegAsGRPC(ctx context.Context, req *pb.RegSvcReqs) (*empty.Empty, error) {
 	// 将服务注册进Discovery中
 	var dc struct {
 		Discovery *DiscoveryConfig
@@ -91,6 +89,10 @@ func (s *Service) Register(ctx context.Context, req *pb.RegSvcReqs) (*pb.RegSvcR
 			cancel,
 		}
 	}
+	return &empty.Empty{}, nil
+}
+
+func (s *Service) RegAsHTTP(ctx context.Context, req *pb.RegSvcReqs) (*pb.RegSvcResp, error) {
 	// 将服务注册进Kong中
 	if svcID, err := s.kong.NewService(req.AppID, req.Urls); err != nil {
 		return nil, err
@@ -99,89 +101,11 @@ func (s *Service) Register(ctx context.Context, req *pb.RegSvcReqs) (*pb.RegSvcR
 	}
 }
 
-func (s *Service) Services(context.Context, *empty.Empty) (resp *pb.LstSvcResp, err error) {
-	for appID := range s.sm {
-		resp.AppIDs = append(resp.AppIDs, appID)
-	}
-	return
-}
-
-type consumer struct {
-	conf    *discovery.Config
-	timeout xtime.Duration
-	appID   string
-	dis     naming.Resolver
-	ins     []*naming.Instance
-}
-
-func (csm *consumer) getInstances(ctx context.Context, ch <-chan struct{}) {
-	for _, ok := <-ch; ok; _, ok = <-ch {
-		if ins, ok := csm.dis.Fetch(ctx); !ok {
-			continue
-		} else if in, ok := ins.Instances[csm.conf.Zone]; ok {
-			csm.ins = in
-		} else {
-			for _, in := range ins.Instances {
-				csm.ins = append(csm.ins, in...)
-			}
-		}
-	}
-}
-
-func (csm *consumer) getInstance(ctx context.Context) *naming.Instance {
-	logTime := time.Now()
-	dur := time.Duration(csm.timeout)
-	for time.Since(logTime) <= dur {
-		if ins, ok := csm.dis.Fetch(ctx); !ok {
-			continue
-		} else if in, ok := ins.Instances[csm.conf.Zone]; ok {
-			csm.ins = in
-		} else {
-			for _, in := range ins.Instances {
-				csm.ins = append(csm.ins, in...)
-			}
-		}
-		if len(csm.ins) > 0 {
-			break
-		}
-	}
-	if len(csm.ins) == 0 {
-		return nil
-	}
-	// NOTE: 此处运用一种负载均衡算法得出一个实例用于处理
-	rand.Seed(time.Now().Unix())
-	return csm.ins[rand.Intn(len(csm.ins))]
-}
-
-func (s *Service) Service(ctx context.Context, req *pb.IdenSvcReqs) (*pb.GetSvcResp, error) {
-	var dc struct {
-		Discovery *DiscoveryConfig
-	}
-	if err := paladin.Get("grpc.toml").UnmarshalTOML(&dc); err != nil {
-		dc.Discovery.Nodes = "127.0.0.1:7171"
-		dc.Discovery.Timeout = xtime.Duration(5 * time.Second)
-	}
-	cfg := &discovery.Config{
-		Nodes: strings.Split(dc.Discovery.Nodes, ","),
-		Zone:  env.Zone,
-		Env:   env.DeployEnv,
-	}
-	dis := discovery.New(cfg)
-	csm := &consumer{
-		cfg,
-		dc.Discovery.Timeout,
-		req.AppID,
-		dis.Build(req.AppID),
-		nil,
-	}
-	ins := csm.getInstance(ctx)
-	return &pb.GetSvcResp{Addrs: ins.Addrs}, nil
-}
-
 func (s *Service) Cancel(ctx context.Context, req *pb.IdenSvcReqs) (*empty.Empty, error) {
 	if svc, exs := s.sm[req.AppID]; !exs {
 		return nil, errors.New("未找到指定服务，取消失败")
 	} else {
+		s.kong.DelService(req.AppID)
 		svc.Cancel()
 	}
 	return &empty.Empty{}, nil
@@ -236,6 +160,7 @@ func (s *Service) Ping(ctx context.Context) (err error) {
 // Close close the resource.
 func (s *Service) Close() {
 	for appID, svc := range s.sm {
+		s.kong.DelService(appID)
 		svc.Cancel()
 		log.Info("Service %s canceled from discovery", appID)
 	}

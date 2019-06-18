@@ -59,13 +59,14 @@ services:
     container_name: discovery
     build:
       context: ./depends/discovery
+    ports:
+      - "7171:7171"
 
   register-center:
     container_name: register-center
     build:
       context: .
     ports:
-      - "8089:8088"
       - "9093:9000"
     environment:
       DISCOVERY_ADDR: "discovery:7171"
@@ -74,16 +75,3 @@ services:
       - discovery
       - kong
     restart: on-failure
-
-  # mico-svc-demo:
-  #   container_name: mico-svc-demo
-  #   build:
-  #     context: test/demo
-  #   ports:
-  #     - "9747:9000"
-  #     - "8747:8000"
-  #   environment:
-  #     DISCOVERY_ADDR: "discovery:7171"
-  #     REGISTER_CENTER: "register-center:8089"
-  #   depends_on:
-  #     - register-center

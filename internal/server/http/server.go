@@ -30,7 +30,7 @@ func New(s *service.Service) (engine *bm.Engine) {
 	}
 	svc = s
 	engine = bm.DefaultServer(hc.Server)
-	pb.RegisterDiscoveryBMServer(engine, svc)
+	pb.RegisterRegisterBMServer(engine, svc)
 	initRouter(engine)
 	if err := engine.Start(); err != nil {
 		panic(err)

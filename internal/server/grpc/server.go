@@ -24,22 +24,16 @@ func New(svc *service.Service) *warden.Server {
 		}
 	}
 	ws := warden.NewServer(rc.Server)
-	registerService(ws, svc, rc.Server.Addr)
+	pb.RegisterRegisterServer(ws.Server(), svc)
+	if _, err := svc.RegAsGRPC(context.Background(), &pb.RegSvcReqs{
+		AppID: "discovery.service",
+		Urls:  []string{"127.0.0.1:9093"}, // 这里给出的url很关键，必须是从外部可以访问的
+	}); err != nil {
+		panic(err)
+	}
 	ws, err := ws.Start()
 	if err != nil {
 		panic(err)
 	}
 	return ws
-}
-
-func registerService(ws *warden.Server, svc *service.Service, addr string) {
-	pb.RegisterDiscoveryServer(ws.Server(), svc)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	if _, err := svc.Register(ctx, &pb.RegSvcReqs{
-		AppID: "discovery.service",
-		Urls:  []string{addr},
-	}); err != nil {
-		panic(err)
-	}
 }
