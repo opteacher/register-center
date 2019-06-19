@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"register-center/internal/server/grpc"
-	"register-center/internal/server/http"
 	"register-center/internal/service"
 
 	"github.com/bilibili/kratos/pkg/conf/paladin"
@@ -26,7 +25,6 @@ func main() {
 	log.Info("register-center start")
 	svc := service.New()
 	grpcSrv := grpc.New(svc)
-	httpSrv := http.New(svc)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
 	for {
@@ -37,9 +35,6 @@ func main() {
 			ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
 			if err := grpcSrv.Shutdown(ctx); err != nil {
 				log.Error("grpcSrv.Shutdown error(%v)", err)
-			}
-			if err := httpSrv.Shutdown(ctx); err != nil {
-				log.Error("httpSrv.Shutdown error(%v)", err)
 			}
 			log.Info("register-center exit")
 			svc.Close()
